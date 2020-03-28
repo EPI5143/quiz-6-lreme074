@@ -1,0 +1,135 @@
+LAUREN REMEDIOS (7783669) EPI5143 QUIZ 6
+
+libname classdat "C:/EPI 5143 class data";
+libname exercise "C:/EPI 5143 work folder/data";
+
+/*a) How many patients had at least 1 inpatient encounter that started in 2003? 
+I am going to create a separate dataset for each question, for this question I 
+will create a flat file dataset that includes only data from 2003 onwards and one row per patient*/
+
+/*STEP 1 creating copy of nencounters table*/
+data encounters;
+set classdat.nencounter;
+run;
+
+/*STEP 2 including only observations that occurred from 2003 onwards*/
+data encounters2;
+set encounters;
+start_date = datepart(EncStartDtm);
+format start_date date9.;
+if start_date>='01Jan2003'd then output;
+run;
+/*sorting by patient id*/
+proc sort data=encounters2 out=sortenc;
+by encpatwid;
+run;
+
+/*STEP 3 deleting all observations that are not INPT*/
+data encinpt;
+set sortenc;
+if EncVisitTypeCd ne 'INPT' then delete;
+run;
+
+/*STEP 4 flatten file by patient id - data step method*/
+data inpt2;
+set encinpt;
+by encpatwid;
+if first.encpatwid=1 then count=0;
+count=count+1;
+if last.encpatwid=1 then output;
+retain count;
+run;
+
+/*ANSWER: based on the log, the final dataset had N=3967 observations.
+Since we had already made this dataset to only include INPT
+encounters AND we had flat filed it by patient id, every observation row/patient should have at least 1 
+INPT encounter. So N=3967 is the # of patients that had 1 or more INPT encounters.*/
+
+/*b)  How many patients had at least 1 emergency room encounter that started in 2003? 
+Again, will be creating a separate dataset, so Steps 1-2 from partA are the same for this partB*/
+
+/*deleting any observations that are not EMERG encounters*/
+data encemerg;
+set sortenc;
+if EncVisitTypeCd ne 'EMERG' then delete;
+run;
+
+/*flat filing by patient id - data step method - and counting the # of EMERG occurrences for each patient*/
+data emerg2;
+set encemerg;
+by encpatwid;
+if first.encpatwid=1 then count=0;
+count=count+1;
+if last.encpatwid=1 then output;
+retain count;
+run;
+
+
+/*ANSWER: based on the log, the final dataset had N=7241 observations.Since we had already made this dataset to only include EMERG
+encounters (so every patient has at least one EMERG) AND we had flat filed it by patient id, there should only 
+be one row per patient, so N=7241 is the # of patients that had 1 or more EMERG encounters.*/
+
+/*c) How many patients had at least 1 visit of either type (inpatient or emergency room encounter) that started 
+in 2003?
+Again, Steps 1-2 from Part A are the same here*/
+
+/*deleting all observations that are not INPT or EMERG*/
+data encall;
+set sortenc;
+if EncVisitTypeCd in:('INPT' 'EMERG') then output;
+run;
+
+/*flat file by patient id and creating count variable (which since all the observations
+in this final dataset will have at least 1 EMERG or INPT, then this count variable 
+will be counting the number of encounters/patient*/
+data final;
+set encall;
+by encpatwid;
+if first.encpatwid=1 then count=0;
+count=count+1;
+if last.encpatwid=1 then output;
+retain count;
+run;
+
+/*ANSWER: From the log, N=10305. Since every patient in this dataset has at least 1 EMERG or INPT encounter, the total
+# of observations is also equivalent to the # of patients with 1+ EMERG/INPT encounters, thus the answer is 10,305 patients.*/
+
+/*d) In patients from c) who had at least 1 visit of either type, create a variable that counts the total number 
+encounters (of either type)*/
+
+/*frequency table of the # of patients per number of encountes*/
+options formchar="|----|+|---+=|-/\<>*";
+ods listing;
+proc freq data=final;
+tables count;
+title 'Frequency of patients per number of encounters';
+run;
+
+
+
+ Frequency of patients per number of encounters                           2
+                                                                        13:45 Saturday, March 28, 2020
+
+                                          The FREQ Procedure
+
+                                                        Cumulative    Cumulative
+                      count    Frequency     Percent     Frequency      Percent
+                      ----------------------------------------------------------
+                          1        8314       80.68          8314        80.68
+                          2        1442       13.99          9756        94.67
+                          3         333        3.23         10089        97.90
+                          4         114        1.11         10203        99.01
+                          5          37        0.36         10240        99.37
+                          6          28        0.27         10268        99.64
+                          7           9        0.09         10277        99.73
+                          8          11        0.11         10288        99.84
+                          9           4        0.04         10292        99.87
+                         10           4        0.04         10296        99.91
+                         11           1        0.01         10297        99.92
+                         12           2        0.02         10299        99.94
+                         13           2        0.02         10301        99.96
+                         17           1        0.01         10302        99.97
+                         23           1        0.01         10303        99.98
+                         27           1        0.01         10304        99.99
+                         28           1        0.01         10305       100.00
+
